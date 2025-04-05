@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koushik-x-alien</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.55.1/lib/index.iife.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@solana/wallet-adapter-phantom@0.22.0/lib/index.iife.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            animation: slideIn 0.5s, fadeOut 0.5s 2.5s;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-600">Solana Token Manager</h1>
+            <div id="wallet-section" class="flex items-center space-x-4">
+                <span id="wallet-balance" class="hidden bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">SOL: 0</span>
+                <button id="connect-wallet" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+                    Connect Wallet
+                </button>
+                <div id="wallet-address" class="hidden bg-gray-200 px-3 py-1 rounded-full text-sm font-mono truncate max-w-xs"></div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Token Creation Section -->
+            <section class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Create Token</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Name</label>
+                        <input type="text" id="token-name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Symbol</label>
+                        <input type="text" id="token-symbol" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Decimals</label>
+                        <input type="number" id="token-decimals" value="9" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Initial Supply</label>
+                        <input type="number" id="token-supply" value="1000" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button id="create-token" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex justify-center items-center">
+                        <span id="create-token-text">Create Token</span>
+                        <div id="create-token-loader" class="hidden ml-2 loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Token Minting Section -->
+            <section class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Mint Tokens</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Address</label>
+                        <input type="text" id="mint-address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Address</label>
+                        <input type="text" id="recipient-address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                        <input type="number" id="mint-amount" value="100" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button id="mint-tokens" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex justify-center items-center">
+                        <span id="mint-tokens-text">Mint Tokens</span>
+                        <div id="mint-tokens-loader" class="hidden ml-2 loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Token Transfer Section -->
+            <section class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Send Tokens</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Token Address</label>
+                        <input type="text" id="send-token-address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Recipient Address</label>
+                        <input type="text" id="send-recipient-address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                        <input type="number" id="send-amount" value="10" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button id="send-tokens" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition flex justify-center items-center">
+                        <span id="send-tokens-text">Send Tokens</span>
+                        <div id="send-tokens-loader" class="hidden ml-2 loader ease-linear rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></div>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Transaction History Section -->
+            <section class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Transaction History</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transaction-history" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No transactions yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- Toast Notifications -->
+        <div id="toast-container" class="fixed bottom-4 right-4 space-y-2 z-50"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let wallet = null;
+        let connection = null;
+        let publicKey = null;
+        let transactions = [];
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Solana connection
+            connection = new solanaWeb3.Connection(
+                solanaWeb3.clusterApiUrl('devnet'),
+                'confirmed'
+            );
+
+            // Initialize Phantom wallet
+            if (window.solana && window.solana.isPhantom) {
+                wallet = window.solana;
+                
+                // Listen for account changes
+                wallet.on('accountChanged', (publicKey) => {
+                    if (publicKey) {
+                        // Update UI with new public key
+                        updateWalletUI(publicKey.toString());
+                        fetchBalance();
+                    } else {
+                        // Wallet disconnected
+                        disconnectWallet();
+                    }
+                });
+            } else {
+                showToast('Phantom wallet not detected. Please install it from <a href="https://phantom.app/" class="underline" target="_blank">phantom.app</a>', 'error');
+                document.getElementById('connect-wallet').disabled = true;
+            }
+
+            // Set up event listeners
+            document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+            document.getElementById('create-token').addEventListener('click', createToken);
+            document.getElementById('mint-tokens').addEventListener('click', mintTokens);
+            document.getElementById('send-tokens').addEventListener('click', sendTokens);
+        });
+
+        // Connect wallet function
+        async function connectWallet() {
+            try {
+                if (!wallet) {
+                    showToast('Phantom wallet not detected', 'error');
+                    return;
+                }
+
+                // Connect to wallet
+                const response = await wallet.connect();
+                publicKey = new solanaWeb3.PublicKey(response.publicKey.toString());
+                
+                // Update UI
+                updateWalletUI(publicKey.toString());
+                fetchBalance();
+                fetchTransactions();
+                
+                showToast('Wallet connected successfully', 'success');
+            } catch (error) {
+                showToast('Failed to connect wallet: ' + error.message, 'error');
+                console.error('Wallet connection error:', error);
+            }
+        }
+
+        // Disconnect wallet function
+        function disconnectWallet() {
+            publicKey = null;
+            document.getElementById('wallet-address').classList.add('hidden');
+            document.getElementById('wallet-balance').classList.add('hidden');
+            document.getElementById('connect-wallet').textContent = 'Connect Wallet';
+            showToast('Wallet disconnected', 'info');
+        }
+
+        // Update wallet UI
+        function updateWalletUI(address) {
+            const shortAddress = address.substring(0, 4) + '...' + address.substring(address.length - 4);
+            document.getElementById('wallet-address').textContent = shortAddress;
+            document.getElementById('wallet-address').classList.remove('hidden');
+            document.getElementById('wallet-balance').classList.remove('hidden');
+            document.getElementById('connect-wallet').textContent = 'Disconnect';
+            document.getElementById('connect-wallet').onclick = () => {
+                wallet.disconnect();
+                disconnectWallet();
+            };
+        }
+
+        // Fetch SOL balance
+        async function fetchBalance() {
+            if (!publicKey) return;
+            
+            try {
+                const balance = await connection.getBalance(publicKey);
+                const solBalance = balance / solanaWeb3.LAMPORTS_PER_SOL;
+                document.getElementById('wallet-balance').textContent = `SOL: ${solBalance.toFixed(4)}`;
+            } catch (error) {
+                showToast('Failed to fetch balance: ' + error.message, 'error');
+                console.error('Balance fetch error:', error);
+            }
+        }
+
+        // Create token function
+        async function createToken() {
+            if (!publicKey) {
+                showToast('Please connect your wallet first', 'error');
+                return;
+            }
+
+            const name = document.getElementById('token-name').value;
+            const symbol = document.getElementById('token-symbol').value;
+            const decimals = parseInt(document.getElementById('token-decimals').value);
+            const supply = parseInt(document.getElementById('token-supply').value);
+
+            if (!name || !symbol || isNaN(decimals) || isNaN(supply)) {
+                showToast('Please fill all fields with valid values', 'error');
+                return;
+            }
+
+            try {
+                // Show loading state
+                toggleLoader('create-token', true);
+                
+                // Create token mint
+                const mint = solanaWeb3.Keypair.generate();
+                const token = new solanaWeb3.Token(
+                    connection,
+                    mint.publicKey,
+                    solanaWeb3.TOKEN_PROGRAM_ID,
+                    solanaWeb3.Keypair.generate() // payer
+                );
+
+                // Create associated token account
+                const fromTokenAccount = await token.createAssociatedTokenAccount(publicKey);
+                
+                // Mint tokens
+                await token.mintTo(
+                    fromTokenAccount,
+                    mint.publicKey, // minting authority
+                    [],
+                    supply * Math.pow(10, decimals)
+                );
+
+                // Update UI
+                document.getElementById('mint-address').value = mint.publicKey.toString();
+                document.getElementById('send-token-address').value = mint.publicKey.toString();
+                
+                showToast(`Token "${symbol}" created successfully!`, 'success');
+                fetchTransactions();
+            } catch (error) {
+                showToast('Token creation failed: ' + error.message, 'error');
+                console.error('Token creation error:', error);
+            } finally {
+                toggleLoader('create-token', false);
+            }
+        }
+
+        // Mint tokens function
+        async function mintTokens() {
+            if (!publicKey) {
+                showToast('Please connect your wallet first', 'error');
+                return;
+            }
+
+            const mintAddress = document.getElementById('mint-address').value;
+            const recipientAddress = document.getElementById('recipient-address').value;
+            const amount = parseInt(document.getElementById('mint-amount').value);
+
+            if (!mintAddress || !recipientAddress || isNaN(amount) || amount <= 0) {
+                showToast('Please fill all fields with valid values', 'error');
+                return;
+            }
+
+            try {
+                toggleLoader('mint-tokens', true);
+                
+                const mintPublicKey = new solanaWeb3.PublicKey(mintAddress);
+                const recipientPublicKey = new solanaWeb3.PublicKey(recipientAddress);
+                
+                const token = new solanaWeb3.Token(
+                    connection,
+                    mintPublicKey,
+                    solanaWeb3.TOKEN_PROGRAM_ID,
+                    solanaWeb3.Keypair.generate() // payer
+                );
+
+                // Get or create associated token account
+                const toTokenAccount = await token.getOrCreateAssociatedAccountInfo(recipientPublicKey);
+                
+                // Mint tokens
+                await token.mintTo(
+                    toTokenAccount.address,
+                    publicKey, // minting authority
+                    [],
+                    amount * Math.pow(10, token.accountInfo.decimals)
+                );
+
+                showToast(`Minted ${amount} tokens successfully!`, 'success');
+                fetchTransactions();
+            } catch (error) {
+                showToast('Minting failed: ' + error.message, 'error');
+                console.error('Minting error:', error);
+            } finally {
+                toggleLoader('mint-tokens', false);
+            }
+        }
+
+        // Send tokens function
+        async function sendTokens() {
+            if (!publicKey) {
+                showToast('Please connect your wallet first', 'error');
+                return;
+            }
+
+            const tokenAddress = document.getElementById('send-token-address').value;
+            const recipientAddress = document.getElementById('send-recipient-address').value;
+            const amount = parseInt(document.getElementById('send-amount').value);
+
+            if (!tokenAddress || !recipientAddress || isNaN(amount) || amount <= 0) {
+                showToast('Please fill all fields with valid values', 'error');
+                return;
+            }
+
+            try {
+                toggleLoader('send-tokens', true);
+                
+                const tokenPublicKey = new solanaWeb3.PublicKey(tokenAddress);
+                const recipientPublicKey = new solanaWeb3.PublicKey(recipientAddress);
+                
+                const token = new solanaWeb3.Token(
+                    connection,
+                    tokenPublicKey,
+                    solanaWeb3.TOKEN_PROGRAM_ID,
+                    solanaWeb3.Keypair.generate() // payer
+                );
+
+                // Get or create associated token accounts
+                const fromTokenAccount = await token.getOrCreateAssociatedAccountInfo(publicKey);
+                const toTokenAccount = await token.getOrCreateAssociatedAccountInfo(recipientPublicKey);
+                
+                // Transfer tokens
+                await token.transfer(
+                    fromTokenAccount.address,
+                    toTokenAccount.address,
+                    publicKey,
+                    [],
+                    amount * Math.pow(10, token.accountInfo.decimals)
+                );
+
+                showToast(`Sent ${amount} tokens successfully!`, 'success');
+                fetchTransactions();
+            } catch (error) {
+                showToast('Token transfer failed: ' + error.message, 'error');
+                console.error('Transfer error:', error);
+            } finally {
+                toggleLoader('send-tokens', false);
+            }
+        }
+
+        // Fetch transaction history
+        async function fetchTransactions() {
+            if (!publicKey) return;
+            
+            try {
+                const signatures = await connection.getSignaturesForAddress(publicKey);
+                transactions = signatures.map(sig => ({
+                    signature: sig.signature,
+                    slot: sig.slot,
+                    status: sig.err ? 'Failed' : 'Confirmed',
+                    timestamp: new Date(sig.blockTime * 1000).toLocaleString()
+                }));
+                
+                updateTransactionHistoryUI();
+            } catch (error) {
+                showToast('Failed to fetch transactions: ' + error.message, 'error');
+                console.error('Transaction fetch error:', error);
+            }
+        }
+
+        // Update transaction history UI
+        function updateTransactionHistoryUI() {
+            const tbody = document.getElementById('transaction-history');
+            tbody.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No transactions yet</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            transactions.forEach(tx => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Transfer</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${tx.signature.substring(0, 6)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tx.status === 'Confirmed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${tx.status}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Helper function to toggle loader
+        function toggleLoader(buttonId, show) {
+            const button = document.getElementById(buttonId);
+            const textSpan = document.getElementById(`${buttonId}-text`);
+            const loader = document.getElementById(`${buttonId}-loader`);
+            
+            if (show) {
+                textSpan.classList.add('hidden');
+                loader.classList.remove('hidden');
+                button.disabled = true;
+            } else {
+                textSpan.classList.remove('hidden');
+                loader.classList.add('hidden');
+                button.disabled = false;
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgColor = 'bg-blue-100 text-blue-800';
+            if (type === 'error') bgColor = 'bg-red-100 text-red-800';
+            if (type === 'success') bgColor = 'bg-green-100 text-green-800';
+            if (type === 'warning') bgColor = 'bg-yellow-100 text-yellow-800';
+            
+            toast.className = `toast px-4 py-2 rounded-md shadow-md ${bgColor} flex items-center`;
+            toast.innerHTML = `
+                <span>${message}</span>
+                <button class="ml-2" onclick="this.parentElement.remove()">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
